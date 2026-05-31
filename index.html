@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Grade Target Calculator | Academic Planner</title>
+  <style>
+    /* ----- BASE & VARIABLES ----- */
+    :root {
+      --bg-body: #f8fafc;
+      --surface: #ffffff;
+      --surface-hover: #f1f5f9;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --border: #e2e8f0;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --info: #8b5cf6;
+      --badge-impossible: #b91c1c;
+      --badge-secured: #059669;
+      --badge-ontrack: #3b82f6;
+      --badge-challenging: #f97316;
+      --badge-difficult: #d97706;
+      --badge-very: #6b7280;
+      --radius-card: 1rem;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      --transition: all 0.2s ease;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-body: #0f172a;
+        --surface: #1e293b;
+        --surface-hover: #334155;
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --border: #334155;
+        --primary: #60a5fa;
+        --primary-dark: #3b82f6;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg-body);
+      color: var(--text-primary);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      line-height: 1.5;
+      padding: 1rem;
+      transition: background 0.3s, color 0.2s;
+    }
+    .app-container { max-width: 1280px; margin: 0 auto; }
+    
+    /* Back navigation button */
+    .back-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      text-decoration: none;
+      color: var(--primary);
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+      transition: var(--transition);
+      font-size: 0.9rem;
+    }
+    .back-nav:hover {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
+    .app-header { text-align: center; margin-bottom: 2rem; }
+    .app-header h1 {
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, var(--primary), var(--info));
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+    .subhead { color: var(--text-secondary); }
+    
+    /* Custom footer */
+    .app-footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .app-footer p:first-child { font-weight: 600; margin-bottom: 0.3rem; }
+
+    /* ----- COMPONENTS ----- */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius-card);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      transition: var(--transition);
+    }
+    .input-group { margin-bottom: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    label { font-weight: 600; font-size: 0.9rem; color: var(--text-secondary); }
+    input, select, .weighted-row input {
+      background: var(--bg-body);
+      border: 1px solid var(--border);
+      padding: 0.7rem 0.8rem;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      color: var(--text-primary);
+      transition: var(--transition);
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .result-card {
+      background: var(--bg-body);
+      padding: 1rem;
+      border-radius: 1rem;
+      text-align: center;
+      border-left: 4px solid var(--primary);
+    }
+    .result-card span { display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+    .result-card strong { font-size: 1.5rem; font-weight: 700; word-break: break-word; }
+    .badge-card { border-left-color: var(--info); }
+    .feasibility-badge {
+      display: inline-block;
+      padding: 0.3rem 0.9rem;
+      border-radius: 2rem;
+      font-weight: 700;
+      font-size: 0.8rem;
+      background: var(--surface-hover);
+      color: var(--text-primary);
+    }
+    .feasibility-impossible { background: #b91c1c; color: white; }
+    .feasibility-secured { background: #059669; color: white; }
+    .feasibility-ontrack { background: #3b82f6; color: white; }
+    .feasibility-challenging { background: #f97316; color: white; }
+    .feasibility-difficult { background: #d97706; color: white; }
+    .feasibility-very { background: #4b5563; color: white; }
+    .btn-secondary, #add-assessment-btn {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      padding: 0.6rem 1.2rem;
+      border-radius: 2rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: var(--transition);
+      margin-bottom: 1rem;
+    }
+    .btn-secondary:hover { background: var(--primary); color: white; border-color: var(--primary); }
+    .weighted-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+      background: var(--bg-body);
+      padding: 0.8rem;
+      border-radius: 1rem;
+      margin-bottom: 0.7rem;
+    }
+    .weighted-row input, .weighted-row .remove-row { flex: 1 1 120px; }
+    .remove-row {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--danger);
+      font-weight: bold;
+    }
+    .scenario-table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; }
+    .scenario-table th, .scenario-table td { padding: 0.6rem; text-align: center; border-bottom: 1px solid var(--border); }
+    .error-msg { color: #ef4444; font-size: 0.75rem; }
+
+    /* ----- MODES / TABS ----- */
+    .mode-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .mode-btn {
+      background: transparent;
+      border: none;
+      padding: 0.7rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 2rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: 0.2s;
+    }
+    .mode-btn.active { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
+    .mode-panel { display: none; animation: fade 0.25s ease; }
+    .mode-panel.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 640px) {
+      .results-grid { grid-template-columns: 1fr; }
+      .mode-btn { padding: 0.5rem 1rem; font-size: 0.8rem; }
+      .card { padding: 1rem; }
+      .weighted-row { flex-direction: column; align-items: stretch; }
+      .weighted-row input { width: 100%; }
+    }
+    @media (min-width: 768px) { .results-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (min-width: 1024px) { .results-grid { grid-template-columns: repeat(3,1fr); } }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <!-- Back to Axinity Labs button -->
+  <a href="https://axinity-systems.github.io/axinity-labs/" class="back-nav" target="_self">
+    ← Back to Axinity Labs
+  </a>
+
+  <header class="app-header">
+    <h1>🎓 Grade Target Calculator</h1>
+    <p class="subhead">Plan your academic goals with precision — deterministic, no AI</p>
+  </header>
+
+  <div class="mode-tabs" role="tablist" aria-label="Calculator modes">
+    <button class="mode-btn active" data-mode="target">🎯 Target</button>
+    <button class="mode-btn" data-mode="forecast">📈 Forecast</button>
+    <button class="mode-btn" data-mode="potential">⚡ Potential</button>
+    <button class="mode-btn" data-mode="weighted">⚖️ Weighted</button>
+    <button class="mode-btn" data-mode="gpa">📚 GPA Planner</button>
+  </div>
+
+  <!-- TARGET MODE -->
+  <div id="target-mode" class="mode-panel active">
+    <div class="card">
+      <h2>Target Grade Calculator</h2>
+      <div class="input-group"><label>Current Score So Far</label><input type="number" id="target-score" value="78" step="any"></div>
+      <div class="input-group"><label>Total Marks Available So Far</label><input type="number" id="target-avail" value="100" step="any"></div>
+      <div class="input-group"><label>Total Course Marks</label><input type="number" id="target-total" value="200" step="any"></div>
+      <div class="input-group"><label>Target Percentage (%)</label><input type="number" id="target-percent" value="85" step="any"></div>
+      <div class="error-msg" id="target-error"></div>
+      <div class="results-grid">
+        <div class="result-card"><span>📊 Current %</span><strong id="target-currentPercent">—</strong></div>
+        <div class="result-card"><span>🎯 Marks Needed</span><strong id="target-marksNeeded">—</strong></div>
+        <div class="result-card"><span>📈 Required Future %</span><strong id="target-reqFuture">—</strong></div>
+        <div class="result-card"><span>🛡️ Marks You Can Lose</span><strong id="target-canLose">—</strong></div>
+        <div class="result-card"><span>🏆 Highest Achievable %</span><strong id="target-highest">—</strong></div>
+        <div class="result-card badge-card"><span>⚡ Feasibility</span><span id="target-feasibility" class="feasibility-badge">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORECAST MODE -->
+  <div id="forecast-mode" class="mode-panel">
+    <div class="card">
+      <h2>Forecast Calculator</h2>
+      <div class="input-group"><label>Current Score So Far</label><input type="number" id="forecast-score" value="120" step="any"></div>
+      <div class="input-group"><label>Total Marks Available So Far</label><input type="number" id="forecast-avail" value="150" step="any"></div>
+      <div class="input-group"><label>Expected Future Percentage (%)</label><input type="number" id="forecast-expected" value="75" step="any"></div>
+      <div class="input-group"><label>Total Course Marks</label><input type="number" id="forecast-total" value="300" step="any"></div>
+      <div class="forecast-summary results-grid">
+        <div class="result-card"><span>📌 Predicted Final Marks</span><strong id="forecast-finalMarks">—</strong></div>
+        <div class="result-card"><span>📊 Predicted Final %</span><strong id="forecast-finalPercent">—</strong></div>
+      </div>
+      <h3>Scenario Table (Future Performance)</h3>
+      <table class="scenario-table" aria-label="scenarios"><thead><tr><th>Future %</th><th>Final %</th></tr></thead><tbody id="scenario-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- POTENTIAL MODE -->
+  <div id="potential-mode" class="mode-panel">
+    <div class="card">
+      <h2>Potential Range</h2>
+      <div class="input-group"><label>Current Score So Far</label><input type="number" id="pot-score" value="95" step="any"></div>
+      <div class="input-group"><label>Total Marks Available So Far</label><input type="number" id="pot-avail" value="120" step="any"></div>
+      <div class="input-group"><label>Total Course Marks</label><input type="number" id="pot-total" value="200" step="any"></div>
+      <div class="results-grid">
+        <div class="result-card"><span>🔺 Maximum Possible %</span><strong id="pot-max">—</strong></div>
+        <div class="result-card"><span>🔻 Minimum Guaranteed %</span><strong id="pot-min">—</strong></div>
+        <div class="result-card"><span>📉 Trend Projection</span><strong id="pot-trend">—</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEIGHTED MODE -->
+  <div id="weighted-mode" class="mode-panel">
+    <div class="card">
+      <h2>Weighted Assessment Calculator</h2>
+      <div class="input-group"><label>Desired Final Grade (%)</label><input type="number" id="weighted-target" value="85" step="any"></div>
+      <button id="add-assessment-btn" class="btn-secondary">➕ Add Assessment</button>
+      <div id="assessments-container" class="assessments-list"></div>
+      <div class="error-msg" id="weight-error-msg"></div>
+      <div class="results-grid">
+        <div class="result-card"><span>📚 Current Weighted Grade %</span><strong id="weighted-current">—</strong></div>
+        <div class="result-card"><span>🎯 Required Avg on Remaining %</span><strong id="weighted-required">—</strong></div>
+        <div class="result-card badge-card"><span>🏷️ Target Feasibility</span><span id="weighted-feasibility" class="feasibility-badge">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GPA MODE -->
+  <div id="gpa-mode" class="mode-panel">
+    <div class="card">
+      <h2>GPA Planner</h2>
+      <div class="input-group"><label>Current GPA</label><input type="number" id="gpa-current" value="3.2" step="0.01"></div>
+      <div class="input-group"><label>Completed Credits</label><input type="number" id="gpa-compCredits" value="60" step="1"></div>
+      <div class="input-group"><label>Target GPA</label><input type="number" id="gpa-target" value="3.5" step="0.01"></div>
+      <div class="input-group"><label>Total Credits</label><input type="number" id="gpa-totalCredits" value="120" step="1"></div>
+      <div class="input-group"><label>GPA Scale</label><select id="gpa-scale"><option value="4.0">4.0 Scale</option><option value="5.0">5.0 Scale</option><option value="10.0">10.0 Scale</option><option value="custom">Custom</option></select></div>
+      <div class="input-group" id="custom-scale-group" style="display:none;"><label>Custom Max GPA</label><input type="number" id="gpa-customScale" step="0.1" placeholder="e.g., 4.3"></div>
+      <div class="results-grid">
+        <div class="result-card"><span>📌 Required Future GPA</span><strong id="gpa-requiredFuture">—</strong></div>
+        <div class="result-card"><span>🏔️ Maximum Achievable GPA</span><strong id="gpa-maxAchievable">—</strong></div>
+        <div class="result-card badge-card"><span>⚡ Feasibility</span><span id="gpa-feasibility" class="feasibility-badge">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <p>🧠 Built by Axinity</p>
+    <p style="font-size: 0.7rem;">More Tools Coming Soon</p>
+  </footer>
+</div>
+
+<script>
+  (function(){
+    // ----------------------------- UTILITIES -----------------------------
+    function formatPercent(val) { return (val !== null && !isNaN(val)) ? val.toFixed(2) + '%' : '—'; }
+    function formatNumber(val, decimals=2) { return (val !== null && !isNaN(val)) ? val.toFixed(decimals) : '—'; }
+    function getFeasibilityClass(key) {
+      const map = { 'Impossible':'feasibility-impossible','Already Secured':'feasibility-secured','On Track':'feasibility-ontrack','Challenging':'feasibility-challenging','Difficult':'feasibility-difficult','Very Difficult':'feasibility-very' };
+      return map[key] || 'feasibility-very';
+    }
+    function computeFeasibility(requiredPercent, currentAvgPercent) {
+      if (requiredPercent > 100) return 'Impossible';
+      if (requiredPercent <= 0) return 'Already Secured';
+      const diff = requiredPercent - currentAvgPercent;
+      if (diff <= 5 && diff > -0.01) return 'On Track';
+      if (diff <= 15) return 'Challenging';
+      if (diff <= 25) return 'Difficult';
+      return 'Very Difficult';
+    }
+
+    // ----------------------------- MODE 1: TARGET -----------------------------
+    function initTarget() {
+      const scoreInp = document.getElementById('target-score');
+      const availInp = document.getElementById('target-avail');
+      const totalInp = document.getElementById('target-total');
+      const pctInp = document.getElementById('target-percent');
+      const errorSpan = document.getElementById('target-error');
+      function update() {
+        let score = parseFloat(scoreInp.value) || 0;
+        let avail = parseFloat(availInp.value) || 0;
+        let total = parseFloat(totalInp.value) || 0;
+        let targetPct = parseFloat(pctInp.value) || 0;
+        if (avail <= 0 || total <= 0) { errorSpan.innerText = 'Available marks and total must be >0'; return; }
+        if (score > avail) { errorSpan.innerText = 'Score cannot exceed available marks'; return; }
+        if (avail > total) { errorSpan.innerText = 'Available marks cannot exceed total'; return; }
+        if (targetPct < 0 || targetPct > 100) { errorSpan.innerText = 'Target % between 0-100'; return; }
+        errorSpan.innerText = '';
+        const currentPercent = (score / avail) * 100;
+        const targetMarks = total * (targetPct / 100);
+        const marksNeeded = targetMarks - score;
+        const remainingMarks = total - avail;
+        const requiredFuturePercent = (marksNeeded / remainingMarks) * 100;
+        const marksCanLose = remainingMarks - marksNeeded;
+        const highestAchievable = ((score + remainingMarks) / total) * 100;
+        const feasibility = computeFeasibility(requiredFuturePercent, currentPercent);
+        document.getElementById('target-currentPercent').innerText = formatPercent(currentPercent);
+        document.getElementById('target-marksNeeded').innerText = formatNumber(marksNeeded);
+        document.getElementById('target-reqFuture').innerText = formatPercent(requiredFuturePercent);
+        document.getElementById('target-canLose').innerText = formatNumber(marksCanLose);
+        document.getElementById('target-highest').innerText = formatPercent(highestAchievable);
+        const badge = document.getElementById('target-feasibility');
+        badge.innerText = feasibility;
+        badge.className = `feasibility-badge ${getFeasibilityClass(feasibility)}`;
+      }
+      [scoreInp, availInp, totalInp, pctInp].forEach(i => i.addEventListener('input', update));
+      update();
+    }
+
+    // ----------------------------- MODE 2: FORECAST -----------------------------
+    function initForecast() {
+      const scoreInp = document.getElementById('forecast-score');
+      const availInp = document.getElementById('forecast-avail');
+      const expInp = document.getElementById('forecast-expected');
+      const totalInp = document.getElementById('forecast-total');
+      const tbody = document.getElementById('scenario-tbody');
+      function update() {
+        let score = parseFloat(scoreInp.value) || 0;
+        let avail = parseFloat(availInp.value) || 0;
+        let exp = parseFloat(expInp.value) || 0;
+        let total = parseFloat(totalInp.value) || 0;
+        if (avail > total) avail = total;
+        if (score > avail) score = avail;
+        if (total === 0) return;
+        const remaining = total - avail;
+        const finalMarks = score + (exp / 100) * remaining;
+        const finalPercent = (finalMarks / total) * 100;
+        document.getElementById('forecast-finalMarks').innerText = formatNumber(finalMarks);
+        document.getElementById('forecast-finalPercent').innerText = formatPercent(finalPercent);
+        const scenarios = [60,70,80,90,100];
+        tbody.innerHTML = '';
+        scenarios.forEach(sc => {
+          const scMarks = score + (sc / 100) * remaining;
+          const scFinal = (scMarks / total) * 100;
+          tbody.insertAdjacentHTML('beforeend', `<tr><td>${sc}%</td><td><strong>${formatPercent(scFinal)}</strong></td></tr>`);
+        });
+      }
+      [scoreInp, availInp, expInp, totalInp].forEach(i => i.addEventListener('input', update));
+      update();
+    }
+
+    // ----------------------------- MODE 3: POTENTIAL -----------------------------
+    function initPotential() {
+      const scoreInp = document.getElementById('pot-score');
+      const availInp = document.getElementById('pot-avail');
+      const totalInp = document.getElementById('pot-total');
+      function update() {
+        let score = parseFloat(scoreInp.value) || 0;
+        let avail = parseFloat(availInp.value) || 0;
+        let total = parseFloat(totalInp.value) || 0;
+        if (avail > total) avail = total;
+        if (score > avail) score = avail;
+        if (total === 0) return;
+        const remaining = total - avail;
+        const maxPercent = ((score + remaining) / total) * 100;
+        const minPercent = (score / total) * 100;
+        let trendPercent = 0;
+        if (avail > 0) {
+          const currentAvg = (score / avail) * 100;
+          const futureFromTrend = (currentAvg / 100) * remaining;
+          trendPercent = ((score + futureFromTrend) / total) * 100;
+        }
+        document.getElementById('pot-max').innerText = formatPercent(maxPercent);
+        document.getElementById('pot-min').innerText = formatPercent(minPercent);
+        document.getElementById('pot-trend').innerText = formatPercent(trendPercent);
+      }
+      [scoreInp, availInp, totalInp].forEach(i => i.addEventListener('input', update));
+      update();
+    }
+
+    // ----------------------------- MODE 4: WEIGHTED -----------------------------
+    let weightedAssessments = [];
+    let nextId = 1;
+    function initWeighted() {
+      const container = document.getElementById('assessments-container');
+      const targetInp = document.getElementById('weighted-target');
+      const weightErrorSpan = document.getElementById('weight-error-msg');
+      
+      function renderRows() {
+        container.innerHTML = '';
+        weightedAssessments.forEach(a => {
+          const row = document.createElement('div');
+          row.className = 'weighted-row';
+          row.dataset.id = a.id;
+          row.innerHTML = `
+            <input type="text" placeholder="Name" value="${escapeHtml(a.name)}" class="ass-name" style="min-width:100px">
+            <input type="number" step="any" placeholder="Weight %" value="${a.weight}" class="ass-weight">
+            <input type="number" step="any" placeholder="Score" value="${a.score}" class="ass-score">
+            <input type="number" step="any" placeholder="Max Score" value="${a.maxScore}" class="ass-max">
+            <label style="display:flex; gap:0.3rem;"><input type="checkbox" class="ass-completed" ${a.completed ? 'checked' : ''}> Completed</label>
+            <button class="remove-row" aria-label="Remove">🗑️</button>
+          `;
+          row.querySelector('.remove-row').addEventListener('click', () => { weightedAssessments = weightedAssessments.filter(x => x.id !== a.id); renderRows(); computeWeighted(); });
+          row.querySelector('.ass-name').addEventListener('change', (e) => { a.name = e.target.value; computeWeighted(); });
+          row.querySelector('.ass-weight').addEventListener('input', (e) => { a.weight = parseFloat(e.target.value) || 0; computeWeighted(); });
+          row.querySelector('.ass-score').addEventListener('input', (e) => { a.score = parseFloat(e.target.value) || 0; computeWeighted(); });
+          row.querySelector('.ass-max').addEventListener('input', (e) => { a.maxScore = parseFloat(e.target.value) || 1; computeWeighted(); });
+          row.querySelector('.ass-completed').addEventListener('change', (e) => { a.completed = e.target.checked; computeWeighted(); });
+          container.appendChild(row);
+        });
+      }
+      
+      function computeWeighted() {
+        const targetGrade = parseFloat(targetInp.value) || 0;
+        let totalWeight = 0;
+        let completedPoints = 0;
+        let incompleteWeightSum = 0;
+        for (const a of weightedAssessments) {
+          let w = a.weight || 0;
+          if (w < 0) w = 0;
+          totalWeight += w;
+          if (a.completed) {
+            let max = a.maxScore > 0 ? a.maxScore : 1;
+            let percent = Math.min(100, (a.score / max) * 100);
+            completedPoints += (percent * w) / 100;
+          } else {
+            incompleteWeightSum += w;
+          }
+        }
+        if (totalWeight > 100 + 0.01) weightErrorSpan.innerText = `Total weight ${totalWeight.toFixed(1)}% exceeds 100%`;
+        else weightErrorSpan.innerText = '';
+        const currentGrade = completedPoints;
+        let requiredRemaining = null;
+        let feasibilityText = 'Incomplete data';
+        if (incompleteWeightSum > 0 && targetGrade > 0) {
+          let neededPoints = targetGrade - currentGrade;
+          let requiredAvg = (neededPoints / incompleteWeightSum) * 100;
+          requiredAvg = Math.min(100, Math.max(0, requiredAvg));
+          requiredRemaining = requiredAvg;
+          if (requiredAvg > 100) feasibilityText = 'Impossible';
+          else if (requiredAvg <= 0) feasibilityText = 'Already Secured';
+          else {
+            let diff = requiredAvg - currentGrade;
+            if (diff <= 5) feasibilityText = 'On Track';
+            else if (diff <= 15) feasibilityText = 'Challenging';
+            else if (diff <= 25) feasibilityText = 'Difficult';
+            else feasibilityText = 'Very Difficult';
+          }
+        } else if (incompleteWeightSum === 0 && targetGrade > currentGrade + 0.01) feasibilityText = 'Impossible';
+        else if (incompleteWeightSum === 0 && targetGrade <= currentGrade) feasibilityText = 'Already Secured';
+        else feasibilityText = 'Set target / incomplete tasks';
+        document.getElementById('weighted-current').innerHTML = formatPercent(currentGrade);
+        document.getElementById('weighted-required').innerHTML = requiredRemaining !== null ? formatPercent(requiredRemaining) : '—';
+        const badgeSpan = document.getElementById('weighted-feasibility');
+        badgeSpan.innerText = feasibilityText;
+        badgeSpan.className = `feasibility-badge ${getFeasibilityClass(feasibilityText)}`;
+      }
+      
+      document.getElementById('add-assessment-btn').addEventListener('click', () => {
+        weightedAssessments.push({ id: nextId++, name: `Assessment ${weightedAssessments.length+1}`, weight: 0, score: 0, maxScore: 100, completed: false });
+        renderRows();
+        computeWeighted();
+      });
+      targetInp.addEventListener('input', computeWeighted);
+      weightedAssessments = [
+        { id: nextId++, name: 'Midterm', weight: 30, score: 82, maxScore: 100, completed: true },
+        { id: nextId++, name: 'Final', weight: 40, score: 0, maxScore: 100, completed: false }
+      ];
+      renderRows();
+      computeWeighted();
+    }
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+    // ----------------------------- MODE 5: GPA -----------------------------
+    function initGpa() {
+      const currGPA = document.getElementById('gpa-current');
+      const compCred = document.getElementById('gpa-compCredits');
+      const targetGPA = document.getElementById('gpa-target');
+      const totalCred = document.getElementById('gpa-totalCredits');
+      const scaleSelect = document.getElementById('gpa-scale');
+      const customGroup = document.getElementById('custom-scale-group');
+      const customScale = document.getElementById('gpa-customScale');
+      
+      function getMaxScale() { return scaleSelect.value === 'custom' ? (parseFloat(customScale.value) || 4.0) : parseFloat(scaleSelect.value); }
+      scaleSelect.addEventListener('change', () => { customGroup.style.display = scaleSelect.value === 'custom' ? 'flex' : 'none'; updateGpa(); });
+      customScale.addEventListener('input', updateGpa);
+      
+      function updateGpa() {
+        let curr = parseFloat(currGPA.value) || 0;
+        let comp = parseFloat(compCred.value) || 0;
+        let target = parseFloat(targetGPA.value) || 0;
+        let total = parseFloat(totalCred.value) || 0;
+        let maxScale = getMaxScale();
+        if (comp > total) comp = total;
+        if (curr > maxScale) curr = maxScale;
+        if (target > maxScale) target = maxScale;
+        let requiredFuture = null;
+        let maxAchievable = (curr * comp + maxScale * (total - comp)) / total;
+        let feasibilityMsg = '';
+        if (total - comp <= 0) {
+          requiredFuture = curr;
+          feasibilityMsg = target <= curr ? 'Already Secured' : 'Impossible';
+        } else {
+          requiredFuture = (target * total - curr * comp) / (total - comp);
+          if (requiredFuture > maxScale) feasibilityMsg = 'Impossible';
+          else if (requiredFuture <= 0) feasibilityMsg = 'Already Secured';
+          else {
+            const diff = requiredFuture - curr;
+            const scaleRel = maxScale;
+            if (diff <= 0.05 * scaleRel) feasibilityMsg = 'On Track';
+            else if (diff <= 0.15 * scaleRel) feasibilityMsg = 'Challenging';
+            else if (diff <= 0.25 * scaleRel) feasibilityMsg = 'Difficult';
+            else feasibilityMsg = 'Very Difficult';
+          }
+        }
+        document.getElementById('gpa-requiredFuture').innerText = requiredFuture !== null ? formatNumber(requiredFuture, 2) : '—';
+        document.getElementById('gpa-maxAchievable').innerText = formatNumber(maxAchievable, 2);
+        const badge = document.getElementById('gpa-feasibility');
+        badge.innerText = feasibilityMsg;
+        badge.className = `feasibility-badge ${getFeasibilityClass(feasibilityMsg)}`;
+      }
+      [currGPA, compCred, targetGPA, totalCred].forEach(i => i.addEventListener('input', updateGpa));
+      updateGpa();
+    }
+
+    // ----------------------------- MODE SWITCHING -----------------------------
+    function switchMode(modeId) {
+      document.querySelectorAll('.mode-panel').forEach(panel => panel.classList.remove('active'));
+      document.getElementById(`${modeId}-mode`).classList.add('active');
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        const isActive = btn.dataset.mode === modeId;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive);
+      });
+    }
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+    });
+    
+    // INIT ALL MODULES
+    initTarget();
+    initForecast();
+    initPotential();
+    initWeighted();
+    initGpa();
+  })();
+</script>
+</body>
+</html>
