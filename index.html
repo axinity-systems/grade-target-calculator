@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Grade Target Calculator | Academic Planner with Memory</title>
+  <title>Grade Target Calculator | Academic Planner</title>
   <style>
     /* ----- BASE & VARIABLES (Enhanced Polish) ----- */
     :root {
@@ -85,18 +85,6 @@
     }
     .subhead { color: var(--text-secondary); }
     
-    /* Storage indicator */
-    .storage-status {
-      font-size: 0.7rem;
-      background: var(--surface-hover);
-      display: inline-block;
-      padding: 0.2rem 0.7rem;
-      border-radius: 1rem;
-      margin-left: 0.5rem;
-      vertical-align: middle;
-      color: var(--text-secondary);
-    }
-    
     .app-footer {
       text-align: center;
       margin-top: 3rem;
@@ -106,6 +94,37 @@
     }
     .app-footer p:first-child { font-weight: 600; margin-bottom: 0.3rem; }
 
+    /* ----- MODE TABS (Centered & Improved) ----- */
+    .mode-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+    .mode-btn {
+      background: transparent;
+      border: none;
+      padding: 0.7rem 1.4rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 2rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: 0.2s;
+    }
+    .mode-btn.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
+    .mode-btn:hover:not(.active) {
+      background: var(--surface-hover);
+      color: var(--primary);
+    }
+    
     /* ----- COMPONENTS ----- */
     .card {
       background: var(--surface);
@@ -197,31 +216,10 @@
     .scenario-table th, .scenario-table td { padding: 0.6rem; text-align: center; border-bottom: 1px solid var(--border); }
     .error-msg { color: #ef4444; font-size: 0.75rem; margin-top: 0.3rem; }
     .info-msg { color: var(--primary); font-size: 0.75rem; margin-top: 0.2rem; }
-
-    /* ----- TABS ----- */
-    .mode-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 2rem;
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 0.5rem;
-    }
-    .mode-btn {
-      background: transparent;
-      border: none;
-      padding: 0.7rem 1.2rem;
-      font-size: 0.9rem;
-      font-weight: 600;
-      border-radius: 2rem;
-      cursor: pointer;
-      color: var(--text-secondary);
-      transition: 0.2s;
-    }
-    .mode-btn.active { background: var(--primary); color: white; box-shadow: var(--shadow-sm); }
     .mode-panel { display: none; animation: fade 0.25s ease; }
     .mode-panel.active { display: block; }
     @keyframes fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    
     @media (max-width: 640px) {
       .results-grid { grid-template-columns: 1fr; }
       .mode-btn { padding: 0.5rem 1rem; font-size: 0.8rem; }
@@ -238,8 +236,8 @@
   <a href="https://axinity-systems.github.io/axinity-labs/" class="back-nav" target="_self">← Back to Axinity Labs</a>
 
   <header class="app-header">
-    <h1>🎓 Grade Target Calculator <span class="storage-status" id="storage-status">💾 auto-save</span></h1>
-    <p class="subhead">Plan with precision — persistent memory, no AI, full control</p>
+    <h1>🎓 Grade Target Calculator</h1>
+    <p class="subhead">Plan with precision</p>
   </header>
 
   <div class="mode-tabs" role="tablist">
@@ -302,11 +300,11 @@
     </div>
   </div>
 
-  <!-- WEIGHTED MODE -->
+  <!-- WEIGHTED MODE (No default values, placeholders only) -->
   <div id="weighted-mode" class="mode-panel">
     <div class="card">
       <h2>Weighted Assessment Calculator</h2>
-      <div class="input-group"><label>Desired Final Grade (%)</label><input type="number" id="weighted-target" step="any"></div>
+      <div class="input-group"><label>Desired Final Grade (%)</label><input type="number" id="weighted-target" step="any" value="85" placeholder="e.g., 85"></div>
       <button id="add-assessment-btn" class="btn-secondary">➕ Add Assessment</button>
       <div id="assessments-container" class="assessments-list"></div>
       <div class="error-msg" id="weight-error-msg"></div>
@@ -337,7 +335,7 @@
   </div>
 
   <footer class="app-footer">
-    <p>🧠 Built by Axinity • Persistent Storage Enabled</p>
+    <p>🧠 Built by Axinity • Persistent Storage</p>
     <p style="font-size: 0.7rem;">All data saved locally — no cloud, full privacy</p>
   </footer>
 </div>
@@ -345,9 +343,9 @@
 <script>
   (function() {
     // ---------- STORAGE KEY ----------
-    const STORAGE_KEY = "grade_calculator_full_state";
+    const STORAGE_KEY = "grade_calculator_full_state_v2";
     
-    // ---------- GLOBAL WEIGHTED STATE ----------
+    // ---------- GLOBAL WEIGHTED STATE (starts empty, no default numbers) ----------
     let weightedAssessments = [];
     let nextWeightedId = 1;
     
@@ -410,20 +408,15 @@
         const isCustom = scaleSelect.value === 'custom';
         customGroup.style.display = isCustom ? 'flex' : 'none';
       }
-      // Weighted mode specific
+      // Weighted mode restore
       if (state.weightedAssessments && Array.isArray(state.weightedAssessments)) {
         weightedAssessments = state.weightedAssessments;
         nextWeightedId = state.nextWeightedId || (weightedAssessments.length ? Math.max(...weightedAssessments.map(a => a.id), 0) + 1 : 1);
       } else {
-        // default if none saved
-        if (weightedAssessments.length === 0) {
-          weightedAssessments = [
-            { id: nextWeightedId++, name: 'Midterm', completed: true },
-            { id: nextWeightedId++, name: 'Final', completed: false }
-          ];
-        }
+        // Start with empty assessments — no confusing default numbers
+        weightedAssessments = [];
+        nextWeightedId = 1;
       }
-      // Re-render weighted rows if container exists
       if (document.getElementById('assessments-container')) renderWeightedRows();
       return true;
     }
@@ -431,27 +424,32 @@
     function saveFullState() {
       const state = captureAllInputs();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      const statusSpan = document.getElementById('storage-status');
-      if (statusSpan) {
-        statusSpan.textContent = '💾 saved';
-        setTimeout(() => { if(statusSpan) statusSpan.textContent = '💾 auto-save'; }, 1200);
-      }
+      // No visible indicator per user request
     }
     
-    // ---------- WEIGHTED RENDER LOGIC (Enhanced) ----------
+    // ---------- WEIGHTED RENDER LOGIC (placeholders, no default values) ----------
     function renderWeightedRows() {
       const container = document.getElementById('assessments-container');
       if (!container) return;
       container.innerHTML = '';
+      if (weightedAssessments.length === 0) {
+        // Show a helpful empty message
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'info-msg';
+        emptyMsg.style.textAlign = 'center';
+        emptyMsg.style.padding = '1rem';
+        emptyMsg.innerText = '📝 No assessments yet. Click "Add Assessment" to start.';
+        container.appendChild(emptyMsg);
+      }
       weightedAssessments.forEach(a => {
         const row = document.createElement('div');
         row.className = 'weighted-row';
         row.dataset.id = a.id;
         row.innerHTML = `
-          <input type="text" placeholder="Name" value="${escapeHtml(a.name)}" class="ass-name" style="min-width:100px">
-          <input type="number" step="any" placeholder="Weight %" value="${a.weight}" class="ass-weight">
-          <input type="number" step="any" placeholder="Score" value="${a.score}" class="ass-score">
-          <input type="number" step="any" placeholder="Max Score" value="${a.maxScore}" class="ass-max">
+          <input type="text" placeholder="Assessment name (e.g., Midterm)" value="${escapeHtml(a.name)}" class="ass-name" style="min-width:100px">
+          <input type="number" step="any" placeholder="Weight % (e.g., 30)" value="${a.weight !== undefined && a.weight !== '' ? a.weight : ''}" class="ass-weight">
+          <input type="number" step="any" placeholder="Your score (e.g., 82)" value="${a.score !== undefined && a.score !== '' ? a.score : ''}" class="ass-score">
+          <input type="number" step="any" placeholder="Max score (e.g., 100)" value="${a.maxScore !== undefined && a.maxScore !== '' ? a.maxScore : ''}" class="ass-max">
           <label style="display:flex; gap:0.3rem;"><input type="checkbox" class="ass-completed" ${a.completed ? 'checked' : ''}> Completed</label>
           <button class="remove-row" aria-label="Remove">🗑️</button>
         `;
@@ -462,9 +460,9 @@
           saveFullState();
         });
         row.querySelector('.ass-name').addEventListener('change', (e) => { a.name = e.target.value; computeWeightedUpdate(); saveFullState(); });
-        row.querySelector('.ass-weight').addEventListener('input', (e) => { a.weight = parseFloat(e.target.value) || 0; computeWeightedUpdate(); saveFullState(); });
-        row.querySelector('.ass-score').addEventListener('input', (e) => { a.score = parseFloat(e.target.value) || 0; computeWeightedUpdate(); saveFullState(); });
-        row.querySelector('.ass-max').addEventListener('input', (e) => { a.maxScore = parseFloat(e.target.value) || 1; computeWeightedUpdate(); saveFullState(); });
+        row.querySelector('.ass-weight').addEventListener('input', (e) => { a.weight = e.target.value === '' ? '' : parseFloat(e.target.value); computeWeightedUpdate(); saveFullState(); });
+        row.querySelector('.ass-score').addEventListener('input', (e) => { a.score = e.target.value === '' ? '' : parseFloat(e.target.value); computeWeightedUpdate(); saveFullState(); });
+        row.querySelector('.ass-max').addEventListener('input', (e) => { a.maxScore = e.target.value === '' ? '' : parseFloat(e.target.value); computeWeightedUpdate(); saveFullState(); });
         row.querySelector('.ass-completed').addEventListener('change', (e) => { a.completed = e.target.checked; computeWeightedUpdate(); saveFullState(); });
         container.appendChild(row);
       });
@@ -477,12 +475,13 @@
       let completedPoints = 0;
       let incompleteWeightSum = 0;
       for (const a of weightedAssessments) {
-        let w = a.weight || 0;
+        let w = (typeof a.weight === 'number' && !isNaN(a.weight)) ? a.weight : 0;
         if (w < 0) w = 0;
         totalWeight += w;
         if (a.completed) {
-          let max = (a.maxScore > 0) ? a.maxScore : 1;
-          let percent = Math.min(100, Math.max(0, (a.score / max) * 100));
+          let max = (typeof a.maxScore === 'number' && a.maxScore > 0) ? a.maxScore : 1;
+          let scoreVal = (typeof a.score === 'number' && !isNaN(a.score)) ? a.score : 0;
+          let percent = Math.min(100, Math.max(0, (scoreVal / max) * 100));
           completedPoints += (percent * w) / 100;
         } else {
           incompleteWeightSum += w;
@@ -490,13 +489,15 @@
       }
       const weightErrorSpan = document.getElementById('weight-error-msg');
       if (totalWeight > 100 + 0.1) weightErrorSpan.innerText = `⚠️ Total weight ${totalWeight.toFixed(1)}% exceeds 100%`;
-      else if (totalWeight < 99.9 && weightedAssessments.length > 0) weightErrorSpan.innerText = `⚠️ Total weight ${totalWeight.toFixed(1)}% is below 100%`;
+      else if (totalWeight < 99.9 && weightedAssessments.length > 0 && totalWeight > 0) weightErrorSpan.innerText = `⚠️ Total weight ${totalWeight.toFixed(1)}% is below 100%`;
       else weightErrorSpan.innerText = '';
       
       const currentGrade = completedPoints;
       let requiredRemaining = null;
-      let feasibilityText = 'Incomplete data';
-      if (incompleteWeightSum > 0 && targetGrade > 0) {
+      let feasibilityText = 'Add assessments & target';
+      if (weightedAssessments.length === 0) {
+        feasibilityText = 'No assessments added';
+      } else if (incompleteWeightSum > 0 && targetGrade > 0) {
         let neededPoints = targetGrade - currentGrade;
         let requiredAvg = (neededPoints / incompleteWeightSum) * 100;
         requiredAvg = Math.min(100, Math.max(0, requiredAvg));
@@ -510,12 +511,12 @@
           else if (diff <= 25) feasibilityText = 'Difficult';
           else feasibilityText = 'Very Difficult';
         }
-      } else if (incompleteWeightSum === 0 && targetGrade > currentGrade + 0.01) feasibilityText = 'Impossible';
-      else if (incompleteWeightSum === 0 && targetGrade <= currentGrade) feasibilityText = 'Already Secured';
-      else if (targetGrade <= 0) feasibilityText = 'Set target grade';
+      } else if (incompleteWeightSum === 0 && weightedAssessments.length > 0 && targetGrade > currentGrade + 0.01) feasibilityText = 'Impossible';
+      else if (incompleteWeightSum === 0 && weightedAssessments.length > 0 && targetGrade <= currentGrade) feasibilityText = 'Already Secured';
+      else if (targetGrade === 0 && weightedAssessments.length > 0) feasibilityText = 'Set target grade';
       
       document.getElementById('weighted-current').innerHTML = formatPercent(currentGrade);
-      document.getElementById('weighted-required').innerHTML = requiredRemaining !== null ? formatPercent(requiredRemaining) : '—';
+      document.getElementById('weighted-required').innerHTML = (requiredRemaining !== null && isFinite(requiredRemaining)) ? formatPercent(requiredRemaining) : '—';
       const badgeSpan = document.getElementById('weighted-feasibility');
       if (badgeSpan) {
         badgeSpan.innerText = feasibilityText;
@@ -523,7 +524,7 @@
       }
     }
     
-    // ---------- MODULE UPDATE FUNCTIONS (preserve original logic, enhanced edge cases) ----------
+    // ---------- CORE CALCULATION UPDATES (unchanged logic) ----------
     function updateTarget() {
       const score = parseFloat(document.getElementById('target-score').value) || 0;
       let avail = parseFloat(document.getElementById('target-avail').value) || 0;
@@ -552,8 +553,8 @@
       const highestAchievable = ((score + remainingMarks) / total) * 100;
       document.getElementById('target-currentPercent').innerText = formatPercent(currentPercent);
       document.getElementById('target-marksNeeded').innerText = formatNumber(marksNeeded);
-      document.getElementById('target-reqFuture').innerText = (requiredFuturePercent !== null && isFinite(requiredFuturePercent)) ? formatPercent(requiredFuturePercent) : '—';
-      document.getElementById('target-canLose').innerText = (marksCanLose !== null && marksCanLose >= 0) ? formatNumber(marksCanLose) : '—';
+      document.getElementById('target-reqFuture').innerHTML = (requiredFuturePercent !== null && isFinite(requiredFuturePercent)) ? formatPercent(requiredFuturePercent) : '—';
+      document.getElementById('target-canLose').innerHTML = (marksCanLose !== null && marksCanLose >= 0) ? formatNumber(marksCanLose) : '—';
       document.getElementById('target-highest').innerText = formatPercent(highestAchievable);
       const badge = document.getElementById('target-feasibility');
       badge.innerText = feasibility;
@@ -580,7 +581,7 @@
         scenarios.forEach(sc => {
           const scMarks = score + (sc / 100) * remaining;
           const scFinal = (scMarks / total) * 100;
-          tbody.insertAdjacentHTML('beforeend', `<tr><td>${sc}%</td><td><strong>${formatPercent(scFinal)}</strong></td></tr>`);
+          tbody.insertAdjacentHTML('beforeend', `<tr><td>${sc}%</td><td><strong>${formatPercent(scFinal)}</strong></td>`);
         });
       }
     }
@@ -600,7 +601,7 @@
         const currentAvg = (score / avail) * 100;
         const futureFromTrend = (currentAvg / 100) * remaining;
         trendPercent = ((score + futureFromTrend) / total) * 100;
-      } else { trendPercent = 0; }
+      }
       document.getElementById('pot-max').innerText = formatPercent(maxPercent);
       document.getElementById('pot-min').innerText = formatPercent(minPercent);
       document.getElementById('pot-trend').innerText = formatPercent(trendPercent);
@@ -643,68 +644,52 @@
       badge.className = `feasibility-badge ${getFeasibilityClass(feasibilityMsg)}`;
     }
     
-    // Attach listeners + save trigger
-    function attachSaveOnChange(...elements) {
+    // ---------- INITIALIZATION ----------
+    function attachEventAndSave(...elements) {
       elements.forEach(el => { if(el) el.addEventListener('input', () => saveFullState()); });
     }
     
-    // INITIALIZATION: load stored data first, then init all, then attach global saves
     function initAll() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          restoreAllInputs(parsed);
-        } catch(e) { console.warn(e); }
+        try { restoreAllInputs(JSON.parse(stored)); } catch(e) { console.warn(e); }
       } else {
-        // ensure default weighted
-        if (weightedAssessments.length === 0) {
-          weightedAssessments = [
-            { id: nextWeightedId++, name: 'Midterm', weight: 30, score: 82, maxScore: 100, completed: true },
-            { id: nextWeightedId++, name: 'Final', weight: 40, score: 0, maxScore: 100, completed: false }
-          ];
-        }
+        weightedAssessments = [];
+        nextWeightedId = 1;
         renderWeightedRows();
       }
-      // Force weighted render after possible restore
       renderWeightedRows();
       computeWeightedUpdate();
+      updateTarget(); updateForecast(); updatePotential(); updateGpa();
       
-      // Update all calculators
-      updateTarget(); updateForecast(); updatePotential(); updateGpa(); computeWeightedUpdate();
-      
-      // Attach event listeners to all main inputs + save
-      const targetInputs = ['target-score','target-avail','target-total','target-percent'];
-      const forecastInputs = ['forecast-score','forecast-avail','forecast-expected','forecast-total'];
-      const potInputs = ['pot-score','pot-avail','pot-total'];
-      const gpaInputs = ['gpa-current','gpa-compCredits','gpa-target','gpa-totalCredits','gpa-scale','gpa-customScale'];
-      const weightedTarget = document.getElementById('weighted-target');
-      [...targetInputs, ...forecastInputs, ...potInputs, ...gpaInputs].forEach(id => {
+      // Attach listeners for each mode + save
+      const targetIds = ['target-score','target-avail','target-total','target-percent'];
+      const forecastIds = ['forecast-score','forecast-avail','forecast-expected','forecast-total'];
+      const potIds = ['pot-score','pot-avail','pot-total'];
+      const gpaIds = ['gpa-current','gpa-compCredits','gpa-target','gpa-totalCredits','gpa-scale','gpa-customScale'];
+      [...targetIds, ...forecastIds, ...potIds, ...gpaIds].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', () => { saveFullState(); if(id.includes('gpa')) updateGpa(); else if(id.includes('target')) updateTarget(); else if(id.includes('forecast')) updateForecast(); else if(id.includes('pot')) updatePotential(); });
       });
-      if(weightedTarget) weightedTarget.addEventListener('input', () => { computeWeightedUpdate(); saveFullState(); });
-      document.getElementById('gpa-scale')?.addEventListener('change', () => { 
+      document.getElementById('weighted-target')?.addEventListener('input', () => { computeWeightedUpdate(); saveFullState(); });
+      document.getElementById('gpa-scale')?.addEventListener('change', () => {
         const customGroup = document.getElementById('custom-scale-group');
-        customGroup.style.display = document.getElementById('gpa-scale').value === 'custom' ? 'flex' : 'none';
+        if(customGroup) customGroup.style.display = document.getElementById('gpa-scale').value === 'custom' ? 'flex' : 'none';
         updateGpa(); saveFullState();
       });
       document.getElementById('gpa-customScale')?.addEventListener('input', () => { updateGpa(); saveFullState(); });
       document.getElementById('add-assessment-btn')?.addEventListener('click', () => {
-        weightedAssessments.push({ id: nextWeightedId++, name: `Assessment ${weightedAssessments.length+1}`, weight: 0, score: 0, maxScore: 100, completed: false });
+        weightedAssessments.push({ id: nextWeightedId++, name: `Assessment ${weightedAssessments.length+1}`, weight: '', score: '', maxScore: '', completed: false });
         renderWeightedRows();
         computeWeightedUpdate();
         saveFullState();
       });
     }
     
-    // Mode switching
     function switchMode(modeId) {
       document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
       document.getElementById(`${modeId}-mode`).classList.add('active');
-      document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.mode === modeId);
-      });
+      document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === modeId));
     }
     document.querySelectorAll('.mode-btn').forEach(btn => btn.addEventListener('click', () => switchMode(btn.dataset.mode)));
     
