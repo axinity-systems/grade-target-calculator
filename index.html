@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Grade Target Calculator | Academic Planner</title>
+  <title>Grade Target Calculator | Academic Planner with Memory</title>
   <style>
-    /* ----- BASE & VARIABLES ----- */
+    /* ----- BASE & VARIABLES (Enhanced Polish) ----- */
     :root {
       --bg-body: #f8fafc;
       --surface: #ffffff;
@@ -53,7 +53,7 @@
     }
     .app-container { max-width: 1280px; margin: 0 auto; }
     
-    /* Back navigation button */
+    /* Back navigation */
     .back-nav {
       display: inline-flex;
       align-items: center;
@@ -85,7 +85,18 @@
     }
     .subhead { color: var(--text-secondary); }
     
-    /* Custom footer */
+    /* Storage indicator */
+    .storage-status {
+      font-size: 0.7rem;
+      background: var(--surface-hover);
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      border-radius: 1rem;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+      color: var(--text-secondary);
+    }
+    
     .app-footer {
       text-align: center;
       margin-top: 3rem;
@@ -184,9 +195,10 @@
     }
     .scenario-table { width: 100%; border-collapse: collapse; margin-top: 0.8rem; }
     .scenario-table th, .scenario-table td { padding: 0.6rem; text-align: center; border-bottom: 1px solid var(--border); }
-    .error-msg { color: #ef4444; font-size: 0.75rem; }
+    .error-msg { color: #ef4444; font-size: 0.75rem; margin-top: 0.3rem; }
+    .info-msg { color: var(--primary); font-size: 0.75rem; margin-top: 0.2rem; }
 
-    /* ----- MODES / TABS ----- */
+    /* ----- TABS ----- */
     .mode-tabs {
       display: flex;
       flex-wrap: wrap;
@@ -223,17 +235,14 @@
 </head>
 <body>
 <div class="app-container">
-  <!-- Back to Axinity Labs button -->
-  <a href="https://axinity-systems.github.io/axinity-labs/" class="back-nav" target="_self">
-    ← Back to Axinity Labs
-  </a>
+  <a href="https://axinity-systems.github.io/axinity-labs/" class="back-nav" target="_self">← Back to Axinity Labs</a>
 
   <header class="app-header">
-    <h1>🎓 Grade Target Calculator</h1>
-    <p class="subhead">Plan your academic goals with precision — deterministic, no AI</p>
+    <h1>🎓 Grade Target Calculator <span class="storage-status" id="storage-status">💾 auto-save</span></h1>
+    <p class="subhead">Plan with precision — persistent memory, no AI, full control</p>
   </header>
 
-  <div class="mode-tabs" role="tablist" aria-label="Calculator modes">
+  <div class="mode-tabs" role="tablist">
     <button class="mode-btn active" data-mode="target">🎯 Target</button>
     <button class="mode-btn" data-mode="forecast">📈 Forecast</button>
     <button class="mode-btn" data-mode="potential">⚡ Potential</button>
@@ -274,7 +283,7 @@
         <div class="result-card"><span>📊 Predicted Final %</span><strong id="forecast-finalPercent">—</strong></div>
       </div>
       <h3>Scenario Table (Future Performance)</h3>
-      <table class="scenario-table" aria-label="scenarios"><thead><tr><th>Future %</th><th>Final %</th></tr></thead><tbody id="scenario-tbody"></tbody></table>
+      <table class="scenario-table"><thead><tr><th>Future %</th><th>Final %</th></tr></thead><tbody id="scenario-tbody"></tbody></table>
     </div>
   </div>
 
@@ -297,7 +306,7 @@
   <div id="weighted-mode" class="mode-panel">
     <div class="card">
       <h2>Weighted Assessment Calculator</h2>
-      <div class="input-group"><label>Desired Final Grade (%)</label><input type="number" id="weighted-target" step="any"></div>
+      <div class="input-group"><label>Desired Final Grade (%)</label><input type="number" id="weighted-target" step="any" value="85"></div>
       <button id="add-assessment-btn" class="btn-secondary">➕ Add Assessment</button>
       <div id="assessments-container" class="assessments-list"></div>
       <div class="error-msg" id="weight-error-msg"></div>
@@ -328,22 +337,29 @@
   </div>
 
   <footer class="app-footer">
-    <p>🧠 Built by Axinity</p>
-    <p style="font-size: 0.7rem;">More Tools Coming Soon</p>
+    <p>🧠 Built by Axinity • Persistent Storage Enabled</p>
+    <p style="font-size: 0.7rem;">All data saved locally — no cloud, full privacy</p>
   </footer>
 </div>
 
 <script>
-  (function(){
-    // ----------------------------- UTILITIES -----------------------------
-    function formatPercent(val) { return (val !== null && !isNaN(val)) ? val.toFixed(2) + '%' : '—'; }
-    function formatNumber(val, decimals=2) { return (val !== null && !isNaN(val)) ? val.toFixed(decimals) : '—'; }
+  (function() {
+    // ---------- STORAGE KEY ----------
+    const STORAGE_KEY = "grade_calculator_full_state";
+    
+    // ---------- GLOBAL WEIGHTED STATE ----------
+    let weightedAssessments = [];
+    let nextWeightedId = 1;
+    
+    // ---------- UTILITIES ----------
+    function formatPercent(val) { return (val !== null && !isNaN(val) && isFinite(val)) ? val.toFixed(2) + '%' : '—'; }
+    function formatNumber(val, decimals=2) { return (val !== null && !isNaN(val) && isFinite(val)) ? val.toFixed(decimals) : '—'; }
     function getFeasibilityClass(key) {
       const map = { 'Impossible':'feasibility-impossible','Already Secured':'feasibility-secured','On Track':'feasibility-ontrack','Challenging':'feasibility-challenging','Difficult':'feasibility-difficult','Very Difficult':'feasibility-very' };
       return map[key] || 'feasibility-very';
     }
     function computeFeasibility(requiredPercent, currentAvgPercent) {
-      if (requiredPercent > 100) return 'Impossible';
+      if (requiredPercent > 100 + 0.01) return 'Impossible';
       if (requiredPercent <= 0) return 'Already Secured';
       const diff = requiredPercent - currentAvgPercent;
       if (diff <= 5 && diff > -0.01) return 'On Track';
@@ -351,66 +367,215 @@
       if (diff <= 25) return 'Difficult';
       return 'Very Difficult';
     }
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
-    // ----------------------------- MODE 1: TARGET -----------------------------
-    function initTarget() {
-      const scoreInp = document.getElementById('target-score');
-      const availInp = document.getElementById('target-avail');
-      const totalInp = document.getElementById('target-total');
-      const pctInp = document.getElementById('target-percent');
-      const errorSpan = document.getElementById('target-error');
-      function update() {
-        let score = parseFloat(scoreInp.value) || 0;
-        let avail = parseFloat(availInp.value) || 0;
-        let total = parseFloat(totalInp.value) || 0;
-        let targetPct = parseFloat(pctInp.value) || 0;
-        if (avail <= 0 || total <= 0) { errorSpan.innerText = 'Available marks and total must be >0'; return; }
-        if (score > avail) { errorSpan.innerText = 'Score cannot exceed available marks'; return; }
-        if (avail > total) { errorSpan.innerText = 'Available marks cannot exceed total'; return; }
-        if (targetPct < 0 || targetPct > 100) { errorSpan.innerText = 'Target % between 0-100'; return; }
-        errorSpan.innerText = '';
-        const currentPercent = (score / avail) * 100;
-        const targetMarks = total * (targetPct / 100);
-        const marksNeeded = targetMarks - score;
-        const remainingMarks = total - avail;
-        const requiredFuturePercent = (marksNeeded / remainingMarks) * 100;
-        const marksCanLose = remainingMarks - marksNeeded;
-        const highestAchievable = ((score + remainingMarks) / total) * 100;
-        const feasibility = computeFeasibility(requiredFuturePercent, currentPercent);
-        document.getElementById('target-currentPercent').innerText = formatPercent(currentPercent);
-        document.getElementById('target-marksNeeded').innerText = formatNumber(marksNeeded);
-        document.getElementById('target-reqFuture').innerText = formatPercent(requiredFuturePercent);
-        document.getElementById('target-canLose').innerText = formatNumber(marksCanLose);
-        document.getElementById('target-highest').innerText = formatPercent(highestAchievable);
-        const badge = document.getElementById('target-feasibility');
-        badge.innerText = feasibility;
-        badge.className = `feasibility-badge ${getFeasibilityClass(feasibility)}`;
-      }
-      [scoreInp, availInp, totalInp, pctInp].forEach(i => i.addEventListener('input', update));
-      update();
+    // ---------- SAVE / LOAD FULL STATE ----------
+    function captureAllInputs() {
+      const inputIds = [
+        'target-score', 'target-avail', 'target-total', 'target-percent',
+        'forecast-score', 'forecast-avail', 'forecast-expected', 'forecast-total',
+        'pot-score', 'pot-avail', 'pot-total',
+        'weighted-target',
+        'gpa-current', 'gpa-compCredits', 'gpa-target', 'gpa-totalCredits', 'gpa-scale', 'gpa-customScale'
+      ];
+      const values = {};
+      inputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) values[id] = el.value;
+      });
+      values['weightedAssessments'] = weightedAssessments;
+      values['nextWeightedId'] = nextWeightedId;
+      return values;
     }
-
-    // ----------------------------- MODE 2: FORECAST -----------------------------
-    function initForecast() {
-      const scoreInp = document.getElementById('forecast-score');
-      const availInp = document.getElementById('forecast-avail');
-      const expInp = document.getElementById('forecast-expected');
-      const totalInp = document.getElementById('forecast-total');
+    
+    function restoreAllInputs(state) {
+      if (!state) return false;
+      const inputIds = [
+        'target-score', 'target-avail', 'target-total', 'target-percent',
+        'forecast-score', 'forecast-avail', 'forecast-expected', 'forecast-total',
+        'pot-score', 'pot-avail', 'pot-total',
+        'weighted-target',
+        'gpa-current', 'gpa-compCredits', 'gpa-target', 'gpa-totalCredits', 'gpa-scale', 'gpa-customScale'
+      ];
+      for (let id of inputIds) {
+        if (state[id] !== undefined) {
+          const el = document.getElementById(id);
+          if (el) el.value = state[id];
+        }
+      }
+      // GPA scale custom visibility
+      const scaleSelect = document.getElementById('gpa-scale');
+      const customGroup = document.getElementById('custom-scale-group');
+      if (scaleSelect && customGroup) {
+        const isCustom = scaleSelect.value === 'custom';
+        customGroup.style.display = isCustom ? 'flex' : 'none';
+      }
+      // Weighted mode specific
+      if (state.weightedAssessments && Array.isArray(state.weightedAssessments)) {
+        weightedAssessments = state.weightedAssessments;
+        nextWeightedId = state.nextWeightedId || (weightedAssessments.length ? Math.max(...weightedAssessments.map(a => a.id), 0) + 1 : 1);
+      } else {
+        // default if none saved
+        if (weightedAssessments.length === 0) {
+          weightedAssessments = [
+            { id: nextWeightedId++, name: 'Midterm', weight: 30, score: 82, maxScore: 100, completed: true },
+            { id: nextWeightedId++, name: 'Final', weight: 40, score: 0, maxScore: 100, completed: false }
+          ];
+        }
+      }
+      // Re-render weighted rows if container exists
+      if (document.getElementById('assessments-container')) renderWeightedRows();
+      return true;
+    }
+    
+    function saveFullState() {
+      const state = captureAllInputs();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const statusSpan = document.getElementById('storage-status');
+      if (statusSpan) {
+        statusSpan.textContent = '💾 saved';
+        setTimeout(() => { if(statusSpan) statusSpan.textContent = '💾 auto-save'; }, 1200);
+      }
+    }
+    
+    // ---------- WEIGHTED RENDER LOGIC (Enhanced) ----------
+    function renderWeightedRows() {
+      const container = document.getElementById('assessments-container');
+      if (!container) return;
+      container.innerHTML = '';
+      weightedAssessments.forEach(a => {
+        const row = document.createElement('div');
+        row.className = 'weighted-row';
+        row.dataset.id = a.id;
+        row.innerHTML = `
+          <input type="text" placeholder="Name" value="${escapeHtml(a.name)}" class="ass-name" style="min-width:100px">
+          <input type="number" step="any" placeholder="Weight %" value="${a.weight}" class="ass-weight">
+          <input type="number" step="any" placeholder="Score" value="${a.score}" class="ass-score">
+          <input type="number" step="any" placeholder="Max Score" value="${a.maxScore}" class="ass-max">
+          <label style="display:flex; gap:0.3rem;"><input type="checkbox" class="ass-completed" ${a.completed ? 'checked' : ''}> Completed</label>
+          <button class="remove-row" aria-label="Remove">🗑️</button>
+        `;
+        row.querySelector('.remove-row').addEventListener('click', () => { 
+          weightedAssessments = weightedAssessments.filter(x => x.id !== a.id); 
+          renderWeightedRows(); 
+          computeWeightedUpdate();
+          saveFullState();
+        });
+        row.querySelector('.ass-name').addEventListener('change', (e) => { a.name = e.target.value; computeWeightedUpdate(); saveFullState(); });
+        row.querySelector('.ass-weight').addEventListener('input', (e) => { a.weight = parseFloat(e.target.value) || 0; computeWeightedUpdate(); saveFullState(); });
+        row.querySelector('.ass-score').addEventListener('input', (e) => { a.score = parseFloat(e.target.value) || 0; computeWeightedUpdate(); saveFullState(); });
+        row.querySelector('.ass-max').addEventListener('input', (e) => { a.maxScore = parseFloat(e.target.value) || 1; computeWeightedUpdate(); saveFullState(); });
+        row.querySelector('.ass-completed').addEventListener('change', (e) => { a.completed = e.target.checked; computeWeightedUpdate(); saveFullState(); });
+        container.appendChild(row);
+      });
+    }
+    
+    function computeWeightedUpdate() {
+      const targetInp = document.getElementById('weighted-target');
+      const targetGrade = parseFloat(targetInp?.value) || 0;
+      let totalWeight = 0;
+      let completedPoints = 0;
+      let incompleteWeightSum = 0;
+      for (const a of weightedAssessments) {
+        let w = a.weight || 0;
+        if (w < 0) w = 0;
+        totalWeight += w;
+        if (a.completed) {
+          let max = (a.maxScore > 0) ? a.maxScore : 1;
+          let percent = Math.min(100, Math.max(0, (a.score / max) * 100));
+          completedPoints += (percent * w) / 100;
+        } else {
+          incompleteWeightSum += w;
+        }
+      }
+      const weightErrorSpan = document.getElementById('weight-error-msg');
+      if (totalWeight > 100 + 0.1) weightErrorSpan.innerText = `⚠️ Total weight ${totalWeight.toFixed(1)}% exceeds 100%`;
+      else if (totalWeight < 99.9 && weightedAssessments.length > 0) weightErrorSpan.innerText = `⚠️ Total weight ${totalWeight.toFixed(1)}% is below 100%`;
+      else weightErrorSpan.innerText = '';
+      
+      const currentGrade = completedPoints;
+      let requiredRemaining = null;
+      let feasibilityText = 'Incomplete data';
+      if (incompleteWeightSum > 0 && targetGrade > 0) {
+        let neededPoints = targetGrade - currentGrade;
+        let requiredAvg = (neededPoints / incompleteWeightSum) * 100;
+        requiredAvg = Math.min(100, Math.max(0, requiredAvg));
+        requiredRemaining = requiredAvg;
+        if (requiredAvg > 100 + 0.01) feasibilityText = 'Impossible';
+        else if (requiredAvg <= 0) feasibilityText = 'Already Secured';
+        else {
+          let diff = requiredAvg - currentGrade;
+          if (diff <= 5) feasibilityText = 'On Track';
+          else if (diff <= 15) feasibilityText = 'Challenging';
+          else if (diff <= 25) feasibilityText = 'Difficult';
+          else feasibilityText = 'Very Difficult';
+        }
+      } else if (incompleteWeightSum === 0 && targetGrade > currentGrade + 0.01) feasibilityText = 'Impossible';
+      else if (incompleteWeightSum === 0 && targetGrade <= currentGrade) feasibilityText = 'Already Secured';
+      else if (targetGrade <= 0) feasibilityText = 'Set target grade';
+      
+      document.getElementById('weighted-current').innerHTML = formatPercent(currentGrade);
+      document.getElementById('weighted-required').innerHTML = requiredRemaining !== null ? formatPercent(requiredRemaining) : '—';
+      const badgeSpan = document.getElementById('weighted-feasibility');
+      if (badgeSpan) {
+        badgeSpan.innerText = feasibilityText;
+        badgeSpan.className = `feasibility-badge ${getFeasibilityClass(feasibilityText)}`;
+      }
+    }
+    
+    // ---------- MODULE UPDATE FUNCTIONS (preserve original logic, enhanced edge cases) ----------
+    function updateTarget() {
+      const score = parseFloat(document.getElementById('target-score').value) || 0;
+      let avail = parseFloat(document.getElementById('target-avail').value) || 0;
+      const total = parseFloat(document.getElementById('target-total').value) || 0;
+      const targetPct = parseFloat(document.getElementById('target-percent').value) || 0;
+      const errorSpan = document.getElementById('target-error');
+      if (avail <= 0 || total <= 0) { errorSpan.innerText = 'Available & total must be >0'; return; }
+      if (score > avail) { errorSpan.innerText = 'Score cannot exceed available marks'; return; }
+      if (avail > total) avail = total;
+      if (targetPct < 0 || targetPct > 100) { errorSpan.innerText = 'Target between 0-100'; return; }
+      errorSpan.innerText = '';
+      const currentPercent = (score / avail) * 100;
+      const targetMarks = total * (targetPct / 100);
+      const marksNeeded = targetMarks - score;
+      const remainingMarks = total - avail;
+      let requiredFuturePercent = null, marksCanLose = null, feasibility = "N/A";
+      if (remainingMarks <= 0) {
+        requiredFuturePercent = (targetPct > currentPercent) ? 101 : 0;
+        marksCanLose = 0;
+        feasibility = (targetPct <= currentPercent) ? 'Already Secured' : 'Impossible';
+      } else {
+        requiredFuturePercent = (marksNeeded / remainingMarks) * 100;
+        marksCanLose = remainingMarks - marksNeeded;
+        feasibility = computeFeasibility(requiredFuturePercent, currentPercent);
+      }
+      const highestAchievable = ((score + remainingMarks) / total) * 100;
+      document.getElementById('target-currentPercent').innerText = formatPercent(currentPercent);
+      document.getElementById('target-marksNeeded').innerText = formatNumber(marksNeeded);
+      document.getElementById('target-reqFuture').innerText = (requiredFuturePercent !== null && isFinite(requiredFuturePercent)) ? formatPercent(requiredFuturePercent) : '—';
+      document.getElementById('target-canLose').innerText = (marksCanLose !== null && marksCanLose >= 0) ? formatNumber(marksCanLose) : '—';
+      document.getElementById('target-highest').innerText = formatPercent(highestAchievable);
+      const badge = document.getElementById('target-feasibility');
+      badge.innerText = feasibility;
+      badge.className = `feasibility-badge ${getFeasibilityClass(feasibility)}`;
+    }
+    
+    function updateForecast() {
+      let score = parseFloat(document.getElementById('forecast-score').value) || 0;
+      let avail = parseFloat(document.getElementById('forecast-avail').value) || 0;
+      let exp = parseFloat(document.getElementById('forecast-expected').value) || 0;
+      let total = parseFloat(document.getElementById('forecast-total').value) || 0;
+      if (avail > total) avail = total;
+      if (score > avail) score = avail;
+      if (total === 0) return;
+      const remaining = total - avail;
+      const finalMarks = score + (exp / 100) * remaining;
+      const finalPercent = (finalMarks / total) * 100;
+      document.getElementById('forecast-finalMarks').innerText = formatNumber(finalMarks);
+      document.getElementById('forecast-finalPercent').innerText = formatPercent(finalPercent);
+      const scenarios = [60,70,80,90,100];
       const tbody = document.getElementById('scenario-tbody');
-      function update() {
-        let score = parseFloat(scoreInp.value) || 0;
-        let avail = parseFloat(availInp.value) || 0;
-        let exp = parseFloat(expInp.value) || 0;
-        let total = parseFloat(totalInp.value) || 0;
-        if (avail > total) avail = total;
-        if (score > avail) score = avail;
-        if (total === 0) return;
-        const remaining = total - avail;
-        const finalMarks = score + (exp / 100) * remaining;
-        const finalPercent = (finalMarks / total) * 100;
-        document.getElementById('forecast-finalMarks').innerText = formatNumber(finalMarks);
-        document.getElementById('forecast-finalPercent').innerText = formatPercent(finalPercent);
-        const scenarios = [60,70,80,90,100];
+      if (tbody) {
         tbody.innerHTML = '';
         scenarios.forEach(sc => {
           const scMarks = score + (sc / 100) * remaining;
@@ -418,204 +583,132 @@
           tbody.insertAdjacentHTML('beforeend', `<tr><td>${sc}%</td><td><strong>${formatPercent(scFinal)}</strong></td></tr>`);
         });
       }
-      [scoreInp, availInp, expInp, totalInp].forEach(i => i.addEventListener('input', update));
-      update();
     }
-
-    // ----------------------------- MODE 3: POTENTIAL -----------------------------
-    function initPotential() {
-      const scoreInp = document.getElementById('pot-score');
-      const availInp = document.getElementById('pot-avail');
-      const totalInp = document.getElementById('pot-total');
-      function update() {
-        let score = parseFloat(scoreInp.value) || 0;
-        let avail = parseFloat(availInp.value) || 0;
-        let total = parseFloat(totalInp.value) || 0;
-        if (avail > total) avail = total;
-        if (score > avail) score = avail;
-        if (total === 0) return;
-        const remaining = total - avail;
-        const maxPercent = ((score + remaining) / total) * 100;
-        const minPercent = (score / total) * 100;
-        let trendPercent = 0;
-        if (avail > 0) {
-          const currentAvg = (score / avail) * 100;
-          const futureFromTrend = (currentAvg / 100) * remaining;
-          trendPercent = ((score + futureFromTrend) / total) * 100;
-        }
-        document.getElementById('pot-max').innerText = formatPercent(maxPercent);
-        document.getElementById('pot-min').innerText = formatPercent(minPercent);
-        document.getElementById('pot-trend').innerText = formatPercent(trendPercent);
-      }
-      [scoreInp, availInp, totalInp].forEach(i => i.addEventListener('input', update));
-      update();
+    
+    function updatePotential() {
+      let score = parseFloat(document.getElementById('pot-score').value) || 0;
+      let avail = parseFloat(document.getElementById('pot-avail').value) || 0;
+      let total = parseFloat(document.getElementById('pot-total').value) || 0;
+      if (avail > total) avail = total;
+      if (score > avail) score = avail;
+      if (total === 0) return;
+      const remaining = total - avail;
+      const maxPercent = ((score + remaining) / total) * 100;
+      const minPercent = (score / total) * 100;
+      let trendPercent = 0;
+      if (avail > 0) {
+        const currentAvg = (score / avail) * 100;
+        const futureFromTrend = (currentAvg / 100) * remaining;
+        trendPercent = ((score + futureFromTrend) / total) * 100;
+      } else { trendPercent = 0; }
+      document.getElementById('pot-max').innerText = formatPercent(maxPercent);
+      document.getElementById('pot-min').innerText = formatPercent(minPercent);
+      document.getElementById('pot-trend').innerText = formatPercent(trendPercent);
     }
-
-    // ----------------------------- MODE 4: WEIGHTED -----------------------------
-    let weightedAssessments = [];
-    let nextId = 1;
-    function initWeighted() {
-      const container = document.getElementById('assessments-container');
-      const targetInp = document.getElementById('weighted-target');
-      const weightErrorSpan = document.getElementById('weight-error-msg');
-      
-      function renderRows() {
-        container.innerHTML = '';
-        weightedAssessments.forEach(a => {
-          const row = document.createElement('div');
-          row.className = 'weighted-row';
-          row.dataset.id = a.id;
-          row.innerHTML = `
-            <input type="text" placeholder="Name" value="${escapeHtml(a.name)}" class="ass-name" style="min-width:100px">
-            <input type="number" step="any" placeholder="Weight %" value="${a.weight}" class="ass-weight">
-            <input type="number" step="any" placeholder="Score" value="${a.score}" class="ass-score">
-            <input type="number" step="any" placeholder="Max Score" value="${a.maxScore}" class="ass-max">
-            <label style="display:flex; gap:0.3rem;"><input type="checkbox" class="ass-completed" ${a.completed ? 'checked' : ''}> Completed</label>
-            <button class="remove-row" aria-label="Remove">🗑️</button>
-          `;
-          row.querySelector('.remove-row').addEventListener('click', () => { weightedAssessments = weightedAssessments.filter(x => x.id !== a.id); renderRows(); computeWeighted(); });
-          row.querySelector('.ass-name').addEventListener('change', (e) => { a.name = e.target.value; computeWeighted(); });
-          row.querySelector('.ass-weight').addEventListener('input', (e) => { a.weight = parseFloat(e.target.value) || 0; computeWeighted(); });
-          row.querySelector('.ass-score').addEventListener('input', (e) => { a.score = parseFloat(e.target.value) || 0; computeWeighted(); });
-          row.querySelector('.ass-max').addEventListener('input', (e) => { a.maxScore = parseFloat(e.target.value) || 1; computeWeighted(); });
-          row.querySelector('.ass-completed').addEventListener('change', (e) => { a.completed = e.target.checked; computeWeighted(); });
-          container.appendChild(row);
-        });
-      }
-      
-      function computeWeighted() {
-        const targetGrade = parseFloat(targetInp.value) || 0;
-        let totalWeight = 0;
-        let completedPoints = 0;
-        let incompleteWeightSum = 0;
-        for (const a of weightedAssessments) {
-          let w = a.weight || 0;
-          if (w < 0) w = 0;
-          totalWeight += w;
-          if (a.completed) {
-            let max = a.maxScore > 0 ? a.maxScore : 1;
-            let percent = Math.min(100, (a.score / max) * 100);
-            completedPoints += (percent * w) / 100;
-          } else {
-            incompleteWeightSum += w;
-          }
-        }
-        if (totalWeight > 100 + 0.01) weightErrorSpan.innerText = `Total weight ${totalWeight.toFixed(1)}% exceeds 100%`;
-        else weightErrorSpan.innerText = '';
-        const currentGrade = completedPoints;
-        let requiredRemaining = null;
-        let feasibilityText = 'Incomplete data';
-        if (incompleteWeightSum > 0 && targetGrade > 0) {
-          let neededPoints = targetGrade - currentGrade;
-          let requiredAvg = (neededPoints / incompleteWeightSum) * 100;
-          requiredAvg = Math.min(100, Math.max(0, requiredAvg));
-          requiredRemaining = requiredAvg;
-          if (requiredAvg > 100) feasibilityText = 'Impossible';
-          else if (requiredAvg <= 0) feasibilityText = 'Already Secured';
-          else {
-            let diff = requiredAvg - currentGrade;
-            if (diff <= 5) feasibilityText = 'On Track';
-            else if (diff <= 15) feasibilityText = 'Challenging';
-            else if (diff <= 25) feasibilityText = 'Difficult';
-            else feasibilityText = 'Very Difficult';
-          }
-        } else if (incompleteWeightSum === 0 && targetGrade > currentGrade + 0.01) feasibilityText = 'Impossible';
-        else if (incompleteWeightSum === 0 && targetGrade <= currentGrade) feasibilityText = 'Already Secured';
-        else feasibilityText = 'Set target / incomplete tasks';
-        document.getElementById('weighted-current').innerHTML = formatPercent(currentGrade);
-        document.getElementById('weighted-required').innerHTML = requiredRemaining !== null ? formatPercent(requiredRemaining) : '—';
-        const badgeSpan = document.getElementById('weighted-feasibility');
-        badgeSpan.innerText = feasibilityText;
-        badgeSpan.className = `feasibility-badge ${getFeasibilityClass(feasibilityText)}`;
-      }
-      
-      document.getElementById('add-assessment-btn').addEventListener('click', () => {
-        weightedAssessments.push({ id: nextId++, name: `Assessment ${weightedAssessments.length+1}`, weight: 0, score: 0, maxScore: 100, completed: false });
-        renderRows();
-        computeWeighted();
-      });
-      targetInp.addEventListener('input', computeWeighted);
-      weightedAssessments = [
-        { id: nextId++, name: 'Midterm', weight: 30, score: 82, maxScore: 100, completed: true },
-        { id: nextId++, name: 'Final', weight: 40, score: 0, maxScore: 100, completed: false }
-      ];
-      renderRows();
-      computeWeighted();
-    }
-    function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
-
-    // ----------------------------- MODE 5: GPA -----------------------------
-    function initGpa() {
-      const currGPA = document.getElementById('gpa-current');
-      const compCred = document.getElementById('gpa-compCredits');
-      const targetGPA = document.getElementById('gpa-target');
-      const totalCred = document.getElementById('gpa-totalCredits');
+    
+    function updateGpa() {
+      let curr = parseFloat(document.getElementById('gpa-current').value) || 0;
+      let comp = parseFloat(document.getElementById('gpa-compCredits').value) || 0;
+      let target = parseFloat(document.getElementById('gpa-target').value) || 0;
+      let total = parseFloat(document.getElementById('gpa-totalCredits').value) || 0;
       const scaleSelect = document.getElementById('gpa-scale');
-      const customGroup = document.getElementById('custom-scale-group');
-      const customScale = document.getElementById('gpa-customScale');
-      
-      function getMaxScale() { return scaleSelect.value === 'custom' ? (parseFloat(customScale.value) || 4.0) : parseFloat(scaleSelect.value); }
-      scaleSelect.addEventListener('change', () => { customGroup.style.display = scaleSelect.value === 'custom' ? 'flex' : 'none'; updateGpa(); });
-      customScale.addEventListener('input', updateGpa);
-      
-      function updateGpa() {
-        let curr = parseFloat(currGPA.value) || 0;
-        let comp = parseFloat(compCred.value) || 0;
-        let target = parseFloat(targetGPA.value) || 0;
-        let total = parseFloat(totalCred.value) || 0;
-        let maxScale = getMaxScale();
-        if (comp > total) comp = total;
-        if (curr > maxScale) curr = maxScale;
-        if (target > maxScale) target = maxScale;
-        let requiredFuture = null;
-        let maxAchievable = (curr * comp + maxScale * (total - comp)) / total;
-        let feasibilityMsg = '';
-        if (total - comp <= 0) {
-          requiredFuture = curr;
-          feasibilityMsg = target <= curr ? 'Already Secured' : 'Impossible';
-        } else {
-          requiredFuture = (target * total - curr * comp) / (total - comp);
-          if (requiredFuture > maxScale) feasibilityMsg = 'Impossible';
-          else if (requiredFuture <= 0) feasibilityMsg = 'Already Secured';
-          else {
-            const diff = requiredFuture - curr;
-            const scaleRel = maxScale;
-            if (diff <= 0.05 * scaleRel) feasibilityMsg = 'On Track';
-            else if (diff <= 0.15 * scaleRel) feasibilityMsg = 'Challenging';
-            else if (diff <= 0.25 * scaleRel) feasibilityMsg = 'Difficult';
-            else feasibilityMsg = 'Very Difficult';
-          }
+      const customScaleInp = document.getElementById('gpa-customScale');
+      let maxScale = scaleSelect.value === 'custom' ? (parseFloat(customScaleInp.value) || 4.0) : parseFloat(scaleSelect.value);
+      if (comp > total) comp = total;
+      curr = Math.min(curr, maxScale);
+      target = Math.min(target, maxScale);
+      let requiredFuture = null, maxAchievable = 0, feasibilityMsg = '';
+      if (total - comp <= 0) {
+        requiredFuture = curr;
+        maxAchievable = curr;
+        feasibilityMsg = target <= curr ? 'Already Secured' : 'Impossible';
+      } else {
+        requiredFuture = (target * total - curr * comp) / (total - comp);
+        maxAchievable = (curr * comp + maxScale * (total - comp)) / total;
+        if (requiredFuture > maxScale + 0.01) feasibilityMsg = 'Impossible';
+        else if (requiredFuture <= 0) feasibilityMsg = 'Already Secured';
+        else {
+          const diff = requiredFuture - curr;
+          const scaleRel = maxScale;
+          if (diff <= 0.05 * scaleRel) feasibilityMsg = 'On Track';
+          else if (diff <= 0.15 * scaleRel) feasibilityMsg = 'Challenging';
+          else if (diff <= 0.25 * scaleRel) feasibilityMsg = 'Difficult';
+          else feasibilityMsg = 'Very Difficult';
         }
-        document.getElementById('gpa-requiredFuture').innerText = requiredFuture !== null ? formatNumber(requiredFuture, 2) : '—';
-        document.getElementById('gpa-maxAchievable').innerText = formatNumber(maxAchievable, 2);
-        const badge = document.getElementById('gpa-feasibility');
-        badge.innerText = feasibilityMsg;
-        badge.className = `feasibility-badge ${getFeasibilityClass(feasibilityMsg)}`;
       }
-      [currGPA, compCred, targetGPA, totalCred].forEach(i => i.addEventListener('input', updateGpa));
-      updateGpa();
+      document.getElementById('gpa-requiredFuture').innerText = requiredFuture !== null ? formatNumber(requiredFuture, 2) : '—';
+      document.getElementById('gpa-maxAchievable').innerText = formatNumber(maxAchievable, 2);
+      const badge = document.getElementById('gpa-feasibility');
+      badge.innerText = feasibilityMsg;
+      badge.className = `feasibility-badge ${getFeasibilityClass(feasibilityMsg)}`;
     }
-
-    // ----------------------------- MODE SWITCHING -----------------------------
+    
+    // Attach listeners + save trigger
+    function attachSaveOnChange(...elements) {
+      elements.forEach(el => { if(el) el.addEventListener('input', () => saveFullState()); });
+    }
+    
+    // INITIALIZATION: load stored data first, then init all, then attach global saves
+    function initAll() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          restoreAllInputs(parsed);
+        } catch(e) { console.warn(e); }
+      } else {
+        // ensure default weighted
+        if (weightedAssessments.length === 0) {
+          weightedAssessments = [
+            { id: nextWeightedId++, name: 'Midterm', weight: 30, score: 82, maxScore: 100, completed: true },
+            { id: nextWeightedId++, name: 'Final', weight: 40, score: 0, maxScore: 100, completed: false }
+          ];
+        }
+        renderWeightedRows();
+      }
+      // Force weighted render after possible restore
+      renderWeightedRows();
+      computeWeightedUpdate();
+      
+      // Update all calculators
+      updateTarget(); updateForecast(); updatePotential(); updateGpa(); computeWeightedUpdate();
+      
+      // Attach event listeners to all main inputs + save
+      const targetInputs = ['target-score','target-avail','target-total','target-percent'];
+      const forecastInputs = ['forecast-score','forecast-avail','forecast-expected','forecast-total'];
+      const potInputs = ['pot-score','pot-avail','pot-total'];
+      const gpaInputs = ['gpa-current','gpa-compCredits','gpa-target','gpa-totalCredits','gpa-scale','gpa-customScale'];
+      const weightedTarget = document.getElementById('weighted-target');
+      [...targetInputs, ...forecastInputs, ...potInputs, ...gpaInputs].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => { saveFullState(); if(id.includes('gpa')) updateGpa(); else if(id.includes('target')) updateTarget(); else if(id.includes('forecast')) updateForecast(); else if(id.includes('pot')) updatePotential(); });
+      });
+      if(weightedTarget) weightedTarget.addEventListener('input', () => { computeWeightedUpdate(); saveFullState(); });
+      document.getElementById('gpa-scale')?.addEventListener('change', () => { 
+        const customGroup = document.getElementById('custom-scale-group');
+        customGroup.style.display = document.getElementById('gpa-scale').value === 'custom' ? 'flex' : 'none';
+        updateGpa(); saveFullState();
+      });
+      document.getElementById('gpa-customScale')?.addEventListener('input', () => { updateGpa(); saveFullState(); });
+      document.getElementById('add-assessment-btn')?.addEventListener('click', () => {
+        weightedAssessments.push({ id: nextWeightedId++, name: `Assessment ${weightedAssessments.length+1}`, weight: 0, score: 0, maxScore: 100, completed: false });
+        renderWeightedRows();
+        computeWeightedUpdate();
+        saveFullState();
+      });
+    }
+    
+    // Mode switching
     function switchMode(modeId) {
-      document.querySelectorAll('.mode-panel').forEach(panel => panel.classList.remove('active'));
+      document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
       document.getElementById(`${modeId}-mode`).classList.add('active');
       document.querySelectorAll('.mode-btn').forEach(btn => {
-        const isActive = btn.dataset.mode === modeId;
-        btn.classList.toggle('active', isActive);
-        btn.setAttribute('aria-selected', isActive);
+        btn.classList.toggle('active', btn.dataset.mode === modeId);
       });
     }
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => switchMode(btn.dataset.mode));
-    });
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.addEventListener('click', () => switchMode(btn.dataset.mode)));
     
-    // INIT ALL MODULES
-    initTarget();
-    initForecast();
-    initPotential();
-    initWeighted();
-    initGpa();
+    initAll();
   })();
 </script>
 </body>
